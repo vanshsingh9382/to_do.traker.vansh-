@@ -30,6 +30,7 @@ export const SmartLoadHeaderBadge: React.FC<{
   const externalEvents = useDayForgeStore((s) => s.externalEvents);
   const settings = useDayForgeStore((s) => s.settings);
   const setReplanModalOpen = useDayForgeStore((s) => s.setReplanModalOpen);
+  const [showLoadDetails, setShowLoadDetails] = useState(false);
 
   const dayTasks = useMemo(
     () => expandTasksForDate(tasks, dateStr),
@@ -46,48 +47,73 @@ export const SmartLoadHeaderBadge: React.FC<{
     [dateStr, dayTasks, allExt, settings]
   );
 
+  const freeMinutes = Math.max(0, loadInfo.availableMinutes - loadInfo.plannedMinutes);
+  const freeHoursFormatted = Number((freeMinutes / 60).toFixed(1))
+    .toString()
+    .replace(/\.0$/, '');
+
+  const isWarning =
+    loadInfo.loadState === 'nearly_full' || loadInfo.loadState === 'overbooked';
+
   const badgeStyle =
     loadInfo.loadState === 'overbooked'
       ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
-      : loadInfo.loadState === 'nearly_full'
-      ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-      : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300';
+      : 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300';
 
   const stateLabel =
-    loadInfo.loadState === 'overbooked'
-      ? 'Overbooked'
-      : loadInfo.loadState === 'nearly_full'
-      ? 'Nearly Full'
-      : 'Load OK';
+    loadInfo.loadState === 'overbooked' ? 'Overbooked' : 'Nearly full';
 
   return (
-    <div className="inline-flex flex-wrap items-center gap-2">
-      <div
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${badgeStyle}`}
-        title={`Planned: ${loadInfo.plannedMinutes}m / Available: ${loadInfo.availableMinutes}m (Workday ${loadInfo.workdayMinutes}m minus ${loadInfo.externalEventMinutes}m external events)`}
+    <div className="relative inline-flex flex-wrap items-center gap-2">
+      <span
+        className="text-xs text-slate-500 dark:text-slate-400 tabular-nums"
+        title={`Planned: ${loadInfo.plannedMinutes}m · Available: ${loadInfo.availableMinutes}m`}
       >
-        {loadInfo.loadState === 'ok' ? (
-          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-        ) : (
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-        )}
-        <span className="font-semibold">{stateLabel}</span>
-        <span className="font-mono text-[11px] opacity-90">
-          {Math.floor(loadInfo.plannedMinutes / 60)}h {loadInfo.plannedMinutes % 60}m /{' '}
-          {Math.floor(loadInfo.availableMinutes / 60)}h {loadInfo.availableMinutes % 60}m (
-          {loadInfo.loadPercent}%)
-        </span>
-      </div>
+        {freeHoursFormatted}h free
+      </span>
 
-      {!compact && (
+      {isWarning && (
+        <button
+          type="button"
+          onClick={() => setShowLoadDetails((v) => !v)}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-xs font-medium cursor-pointer ${badgeStyle}`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span>{stateLabel}</span>
+        </button>
+      )}
+
+      {!compact && isWarning && (
         <button
           type="button"
           onClick={() => setReplanModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/80 hover:bg-blue-100 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
         >
-          <Wand2 className="w-3.5 h-3.5" />
+          <Wand2 className="w-3.5 h-3.5 text-slate-400" />
           Replan my day
         </button>
+      )}
+
+      {showLoadDetails && (
+        <div className="absolute right-0 top-7 z-30 w-64 p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-xs space-y-2">
+          <div className="font-semibold text-slate-900 dark:text-slate-100">
+            Schedule capacity ({loadInfo.loadPercent}%)
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 tabular-nums">
+            Planned {Math.floor(loadInfo.plannedMinutes / 60)}h {loadInfo.plannedMinutes % 60}m of{' '}
+            {Math.floor(loadInfo.availableMinutes / 60)}h {loadInfo.availableMinutes % 60}m available.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowLoadDetails(false);
+              setReplanModalOpen(true);
+            }}
+            className="w-full py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 cursor-pointer"
+          >
+            Replan my day →
+          </button>
+        </div>
       )}
     </div>
   );

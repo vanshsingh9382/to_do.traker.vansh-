@@ -4,46 +4,46 @@ DayForge is a local-first daily time-blocking, recurring task, habit tracking, m
 
 ---
 
-## Phase 4.0: UI/UX Clean-Up Audit & Feature Map
+## Phase 4.0 & 4.1: Calm UI / UX Clean-Up & Clarity Pass
 
-### 1. Phase 4.0 UI Clutter Audit (Top 10 Crowded Areas Identified & Resolved)
-1. **Desktop Sidebar Navigation**: Previously listed 12 top-level buttons at once plus uncollapsed Saved Views, Categories, and a multi-line streak card. **Resolved**: Shows **5 main pinned items** (`Today`, `Calendar`, `Tasks`, `Notes`, `Analytics`) by default, a collapsible **"More"** group (`Habits`, `Goals & Templates`, `Eisenhower Matrix`, `Reviews`, `Achievements`, `Reports & CSV`), collapsible **Pinned Views** & **Categories**, **Where is everything?** + **Settings** pinned at the bottom, and a **one-line footer** (`Score X/100 · 🔥 Yd`).
-2. **Top Header Bar & Demo Banner**: Previously stacked a multi-button demo banner and numerous action pills. **Resolved**: Demo banner is a **single dismissible line** (`Clear demo data` · `×`), and the top bar has a tidy right-hand cluster (`+ New Task`, `Search / ⌘K`, `Notifications` bell, `Sync status` local-only slot, Dark Mode toggle, Notes toggle, and `Account` avatar).
-3. **Active Focus Bar**: Previously rendered a tall multi-row banner when a timer ran. **Resolved**: Slim ~40px (`h-10`) top strip showing task title, Pomodoro/Stopwatch badge, live clock, Pause/Resume (`P`), Save, and Zen (`F`).
-4. **Today Page Above the Fold**: Previously stacked a 4-card KPI grid, Focus Target progress bars, Daily Goal input, Mood & Energy buttons, Today's Habits card, Carry-Forward banner, and Quote banner all above the task list. **Resolved**: Above the fold shows only **Greeting + Date**, **one summary line** (SVG progress ring + `X of Y done · Zh planned · Wh focused (Rh left)` + load badge + `Actions ⋯` menu for *Wrap up day*, *Replan my day*, and *AI Schedule Architect*), the **List / Timeline** switch, and the slim **Quick-Add** input. All secondary widgets now live in the **"Today's extras"** interactive chip row (`Habits X/Y`, `Mood & Energy`, `Daily Goal`, `Focus Target`, `Motivation`, `Unfinished`) where clicking any chip opens its full widget.
-5. **Task Cards (`TaskListView` & `AllTasksWorkspacePage`)**: Previously showed 6–8 badges and 4 action buttons on every card at all times. **Resolved**: Compact cards show checkbox, category color dot, title, time range, and at most **2 metadata items + `+N`**; action buttons (`Focus`, `Pomodoro`, `Note`, `More ⋯`) appear on hover/focus on desktop and remain accessible on touch screens.
-6. **Task Detail Drawer (`TaskDetailModal`)**: Previously displayed a long ungrouped form with recurrence, reminders, subtasks, goals, Google sync, and time logs all expanded at once. **Resolved**: Right-side drawer shows essentials at the top (**Title**, **Date**, **Category**, **Status**, **Start/End Time**, **Free Slots**, **Start Timer**) and organizes everything else into a **"More options" accordion** (*Priority, Matrix & Tags*, *Repeat*, *Reminders*, *Subtasks*, *Goal Link*, *Google Calendar & .ICS*, *Notes & Description*, *Time Log*) that remembers open/closed state.
-7. **Notes Pane (`NotesPanel`)**: Previously stacked a full note list above the editor at all times. **Resolved**: Uses a compact `All Notes (N) ▾` switcher button that opens a slide-over **Notes List Drawer** (housing search, folder filter, pinned notes, and delete/pin actions) and a compact formatting bar so the writing area is calm and spacious.
-8. **Calendar Page (`CalendarPage`)**: Previously showed multiple `.ICS` buttons in the header and a large always-expanded Google Calendar setup card below the grid. **Resolved**: Slim single-row toolbar with `Prev / Today / Next`, `Day / Week / Month` switch, a **Google Calendar status chip** (toggling the two-way sync & setup panel), and a **.ICS / Export** popover.
-9. **All Tasks Page (`AllTasksWorkspacePage`)**: Previously displayed two rows of 8 filter dropdowns and an always-visible Bulk Action bar. **Resolved**: Slim toolbar with Search, `Group` & `Sort` selectors, a **Filters** popover (with active filter chips below when active), and a **conditional Bulk Action bar** that appears **only when tasks are selected**.
-10. **Analytics & Settings Pages (`AnalyticsDashboard` & `SettingsPanel`)**: Analytics previously rendered 9 charts on a single scrolling page; Settings rendered all cards open at once. **Resolved**: Analytics shows **4 key stat cards + 1 main Score Trend chart** above the fold with **6 clean tabs** (`Overview`, `Time`, `Tasks`, `Habits`, `Consistency`, `Mood`) below. Settings features a **Search settings** box and **10 single-expand accordion sections** (including new **Appearance** controls for *Comfortable/Compact density*, *Sidebar mode*, *Notes default*, *Today's extras toggle*, *Reduce motion*, and *Pinned sidebar items*).
+### 1. UI Clutter Audit & Clarity Pass Improvements
+1. **Desktop Sidebar Navigation (4.0 & 4.1f)**: Fixed header, scrollable middle, and fixed footer so the bottom controls never clip at 700px height. Shows **5 main pinned items** (`Today`, `Calendar`, `Tasks`, `Notes`, `Analytics`) with a soft tinted background and left accent bar (`border-l-2 border-blue-600`) for the active item, a collapsible **More** group, sentence-case **Pinned views** & **Categories** (collapsed by default), and a compact footer with **Settings**, a **?** icon button for *Where is everything?*, and a one-line `Score X · streak Yd`.
+2. **Top Header Bar (4.1a)**: Compact date control (`< Fri, 13 Nov >` + `Today` button when off-today; clicking the label opens the date picker), a single solid-blue **New task** primary button, icon-only **Search** (shortcut in tooltip), **Bell**, **Notes toggle**, and **Avatar menu** (housing the **Theme toggle** *Light / Dark / System*, **Local** sync status, and *Account & backup* link).
+3. **Greeting Card (4.1b)**: Shows the greeting, `List / Timeline` segmented switch, and `Actions` (`...`) menu without repeating the date. Uses spacing and thin dividers instead of nested boxes for the summary line (`X of Y done · Zh planned · Wh focused · 12h free`) and plain quick-add input (`Add a task... (N for full form)`), where the ghost `Add` button appears only while typing.
+4. **Today's Extras Row (4.1c)**: Compact neutral-grey chips with neutral icons (`Habits X/Y`, `Mood & energy`, merged `Daily goal` holding both the daily goal and focus target progress, `Motivation`, and `Unfinished from yesterday`).
+5. **Task List, Filter Row & Empty States (4.1d–e)**: Search and `Filters & Sort` are hidden when there are no tasks to act on. When tasks exist, a single slim row shows an icon-only search button (expanding on click) and `Filters & Sort`. Contextual empty states distinguish between an empty day (*"Nothing planned for today"* with *"Add a task"* and *"Use a template"*) and empty filter results (*"No tasks match these filters"* with *"Clear filters"*).
+6. **Notes Panel (4.1g)**: Header uses a segmented `Today | All notes (N)` switch on the left and icon-only `Preview` and `New` (`+`) buttons on the right. Under the note title is a quiet meta line (`Folder: Daily · Link task`) with small popovers, followed by an icon-only formatting toolbar dimmed until the editor is focused, and normal UI font (`tabular-nums`) for writing.
+7. **Task Detail Drawer, Calendar, All Tasks, Analytics & Settings**: All Settings sections start collapsed by default with neutral-grey icons; Task Detail "More options" opens only *Notes & description* by default; Analytics uses 4 key stat cards + 6 clean tabs.
 
 ---
 
 ### 2. Where Everything Lives Now (Complete Feature Map)
 
-| Feature (Phases 1–3) | New Location in Phase 4.0 | Shortcut |
+| Feature (Phases 1–3) | Location in Phase 4.1 | Shortcut |
 | :--- | :--- | :--- |
 | **Today Plan (List & Timeline)** | Sidebar → **Today** (segmented `List / Timeline` switch) | `G` then `T` |
-| **Quick-Add Task & Full Task Drawer** | Today top input, Top bar `+ New Task`, or Mobile `+` button | `Q` or `N` |
-| **Task Detail "More Options" (Repeat, Reminders, Subtasks, Goal, Google, Time Log)** | Click any task card → Right-side **Task Detail Drawer** → **More Options** accordion | — |
-| **Wrap Up Day Ritual (4-Step Wizard)** | Today header → **Actions (⋯)** menu → *Wrap up day ritual* | `W` |
-| **Smart Replan ("Replan my day")** | Today header → **Actions (⋯)** menu → *Replan my day* (or Load badge) | — |
-| **AI Schedule Architect** | Today header → **Actions (⋯)** menu → *AI Schedule Architect* (or Settings → AI Assistant) | — |
-| **Today's Habits, Mood & Energy, Daily Goal, Focus Target, Motivation, Yesterday Unfinished** | Today page → **"Today's extras"** chip row (click any chip to open its interactive panel) | — |
+| **Compact Date Picker & Today Jump** | Top bar left (`< Fri, 13 Nov >`; click date label to open picker) | — |
+| **Quick-Add Task & Full Task Drawer** | Today greeting card input, Top bar `New task`, or Mobile `+` button | `Q` or `N` |
+| **Theme Toggle (Light / Dark / System) & Sync Status** | Top bar right → **Avatar menu** (also in Settings → Appearance / Account) | — |
+| **Task Detail "More Options" (Repeat, Reminders, Subtasks, Goal, Google, Time Log)** | Click any task card → Right-side **Task Detail Drawer** → **More options** accordion | — |
+| **Wrap Up Day Ritual (4-Step Wizard)** | Today greeting card → **Actions (⋯)** menu → *Wrap up day ritual* | `W` |
+| **Smart Replan ("Replan my day")** | Today greeting card → **Actions (⋯)** menu → *Replan my day* (or click `Xh free` in summary line) | — |
+| **AI Schedule Architect** | Today greeting card → **Actions (⋯)** menu → *AI schedule architect* (or Settings → AI Assistant) | — |
+| **Daily Goal & Focus Target Progress** | Today page → **"Today's extras"** chip row → **Daily goal** chip popover | — |
+| **Today's Habits, Mood & Energy, Motivation, Unfinished** | Today page → **"Today's extras"** chip row (click any chip to open its popover) | — |
 | **Live Focus Stopwatch & Pomodoro Timer** | Hover any task card → **Focus** / **Pomodoro**; slim 40px bar appears at top while running | `P` (Pause/Resume) |
 | **Focus / Zen Mode** | Slim Active Focus Bar → **Zen** button (or Command Palette) | `F` |
 | **Calendar (Day / Week / Month)** | Sidebar → **Calendar** | `G` then `C` |
-| **Google Calendar Two-Way Sync & Setup** | Calendar toolbar → **Setup Google Sync / Google Connected** chip (or Settings → Calendar & Integrations) | — |
+| **Google Calendar Two-Way Sync & Setup** | Calendar toolbar → **Setup Google Sync / Google Connected** chip (or Settings → Integrations) | — |
 | **.ICS Import, Export & Feed Preview** | Calendar toolbar → **.ICS / Export** popover | — |
-| **All Tasks (List & Kanban, Saved Views, Filters, Bulk Actions, Tag Manager)** | Sidebar → **Tasks** (`Filters` popover, `Views` bar, `Tag Manager` button; Bulk bar appears when tasks are checked) | — |
-| **Notes Pane & Markdown Workspace** | Right side pane (`>=1280px`), Top bar Notes drawer button (`<1280px`), or Sidebar → **Notes** (`All Notes ▾` switcher opens folders/search/pinned drawer) | `]` |
+| **All Tasks (List & Kanban, Saved Views, Filters, Bulk Actions, Tag Manager)** | Sidebar → **Tasks** (`Filters` popover, `Views` bar, `Tag manager` button; Bulk bar appears when tasks are checked) | — |
+| **Notes Pane & Markdown Workspace** | Right side pane (`>=1280px`), Top bar Notes button (`<1280px`), or Sidebar → **Notes** (`Today \| All notes (N)` switch) | `]` |
 | **Analytics (4 Key Cards + 6 Tabs)** | Sidebar → **Analytics** (`Overview`, `Time`, `Tasks`, `Habits`, `Consistency`, `Mood` tabs + `Scoring Formula` popover) | `G` then `A` |
 | **Habits Tracker & 90-Day Heatmap** | Sidebar → **More** → **Habits** | `G` then `H` |
-| **Goals & Templates** | Sidebar → **More** → **Goals & Templates** | — |
+| **Goals & Templates** | Sidebar → **More** → **Goals & Templates** (also linked in Today empty state) | — |
 | **Eisenhower Matrix (4 Quadrants)** | Sidebar → **More** → **Eisenhower Matrix** | — |
 | **Daily & Weekly Reviews** | Sidebar → **More** → **Reviews** | — |
 | **Achievements & Milestones** | Sidebar → **More** → **Achievements** | — |
 | **CSV Exports & Printable Reports** | Sidebar → **More** → **Reports & CSV** (also in Settings → Data & Backup) | — |
-| **Where is everything? (Searchable Feature Map)** | Sidebar bottom → **Where is everything?** | `Ctrl/Cmd + K` |
-| **Settings (Searchable Accordion)** | Sidebar bottom → **Settings** (*Profile*, *Account & Cloud Sync*, *Planning*, *Timer*, *Notifications*, *Integrations*, *AI Assistant*, *Appearance*, *Data & Backup*, *Shortcuts*) | — |
+| **Where is everything? (Searchable Feature Map)** | Sidebar footer → **?** icon button next to Settings (or Avatar menu) | `Ctrl/Cmd + K` |
+| **Settings (Searchable Accordion)** | Sidebar footer → **Settings** (all 10 sections start collapsed for easy scanning) | — |

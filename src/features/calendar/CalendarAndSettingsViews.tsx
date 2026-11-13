@@ -524,11 +524,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       {/* Header + Search Settings Input */}
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            Settings &amp; Preferences
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Settings &amp; preferences
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            One section opens at a time to keep Settings calm. Search below to jump to any setting immediately.
+            Sections start collapsed so you can scan the list. Click any section or search to jump straight to a setting.
           </p>
         </div>
 
@@ -545,8 +545,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
       </div>
 
-      {/* Accordion Sections (Only one expanded at a time unless searching) */}
-      <div className="space-y-2.5">
+      {/* Accordion Sections (All start collapsed; only one expanded at a time unless searching) */}
+      <div className="space-y-2">
         {visibleSections.map((sec) => {
           const Icon = sec.icon;
           const open = isSectionOpen(sec.id);
@@ -561,14 +561,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 type="button"
                 onClick={() => handleToggleSection(sec.id)}
                 aria-expanded={open}
-                className="w-full px-5 py-4 flex items-center justify-between gap-3 text-left hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+                className="w-full px-5 py-3.5 flex items-center justify-between gap-3 text-left hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {sec.title}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 truncate">

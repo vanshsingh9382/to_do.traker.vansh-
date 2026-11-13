@@ -502,7 +502,7 @@ export function generateSeedData(referenceDate = new Date()): {
     {
       id: `demo-note-daily-${todayStr}`,
       title: `Daily Note — ${todayStr}`,
-      markdown: `# Daily Plan & Brain Dump (${todayStr})\n\n## Top Focus Today\n1. Finish **Distributed Rate Limiter** architecture notes\n2. Ship **DayForge** core daily workflow & time tracking\n3. Protect evening study session for Trie problems\n\n## Quick Action Checklist\n- [x] Morning hydration & 10m sunlight walk\n- [x] Plan time blocks on the hourly timeline\n- [ ] Export weekly JSON backup before Friday\n- [ ] Follow up on benchmark PR latency numbers\n\n## Scratchpad\n> Tip: Highlight any line in this note and click **"Make this a task"** in the toolbar to turn it directly into a scheduled task!`,
+      markdown: `# Daily Plan & Brain Dump\n\n## Top Focus Today\n1. Finish **Distributed Rate Limiter** architecture notes\n2. Ship **DayForge** core daily workflow & time tracking\n3. Protect evening study session for Trie problems\n\n## Quick Action Checklist\n- [x] Morning hydration & 10m sunlight walk\n- [x] Plan time blocks on the hourly timeline\n- [ ] Export weekly JSON backup before Friday\n- [ ] Follow up on benchmark PR latency numbers\n\n## Scratchpad\n> Tip: Highlight any line in this note and click **"Make this a task"** in the toolbar to turn it directly into a scheduled task!`,
       folder: 'Daily Journal',
       tags: ['daily', 'planning'],
       pinned: true,

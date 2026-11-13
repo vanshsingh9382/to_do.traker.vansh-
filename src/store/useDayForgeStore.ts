@@ -1728,7 +1728,7 @@ export const useDayForgeStore = create<DayForgeState>()(
         if (existing) return existing;
         return get().createNote({
           title: `Daily Note — ${date}`,
-          markdown: `# Daily Note (${date})\n\n## Brain Dump & Focus\n- [ ] Top priority for today\n\n## Notes & Ideas\n`,
+          markdown: `## Brain Dump & Focus\n- [ ] Top priority for today\n\n## Notes & Ideas\n`,
           folder: 'Daily Journal',
           tags: ['daily'],
           linkedDate: date,

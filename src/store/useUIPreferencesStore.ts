@@ -61,12 +61,12 @@ export const useUIPreferencesStore = create<UIPreferencesState>()(
       pinnedNavItems: DEFAULT_PINNED_NAV_ITEMS,
       moreNavExpanded: false,
       categoriesExpanded: false,
-      pinnedViewsExpanded: true,
+      pinnedViewsExpanded: false,
       dismissedDemoBanner: false,
-      activeSettingsSection: 'profile',
+      activeSettingsSection: '',
       analyticsActiveTab: 'overview',
       taskDetailOpenSections: {
-        subtasks: true,
+        subtasks: false,
         notes: true,
       },
 

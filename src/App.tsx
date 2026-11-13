@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { format, parseISO, subDays } from 'date-fns';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { addDays, format, parseISO, subDays } from 'date-fns';
 import {
   CheckSquare,
   Calendar,
@@ -34,6 +34,7 @@ import {
   MoreHorizontal,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Cloud,
   X,
 } from 'lucide-react';
@@ -99,7 +100,6 @@ type TodayExtraChipId =
   | 'habits'
   | 'mood'
   | 'goal'
-  | 'focus'
   | 'quote'
   | 'unfinished';
 
@@ -138,7 +138,7 @@ export function App() {
   const setReplanModalOpen = useDayForgeStore((s) => s.setReplanModalOpen);
   const setCommandPaletteOpen = useDayForgeStore((s) => s.setCommandPaletteOpen);
 
-  // UI Preferences (Phase 4.0)
+  // UI Preferences (Phase 4.0 / 4.1)
   const pinnedNavItems = useUIPreferencesStore((s) => s.pinnedNavItems);
   const moreNavExpanded = useUIPreferencesStore((s) => s.moreNavExpanded);
   const setMoreNavExpanded = useUIPreferencesStore((s) => s.setMoreNavExpanded);
@@ -155,6 +155,9 @@ export function App() {
   // Start background reminder scheduler & PWA install manager
   const pwaState = usePWAAndReminders();
 
+  // Hidden date picker ref for the compact top-bar date label
+  const datePickerRef = useRef<HTMLInputElement | null>(null);
+
   // Modal states
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -167,7 +170,7 @@ export function App() {
   // Today's menus & popovers
   const [showTodayMoreMenu, setShowTodayMoreMenu] = useState(false);
   const [activeExtraChip, setActiveExtraChip] = useState<TodayExtraChipId | null>(null);
-  const [showSyncPopover, setShowSyncPopover] = useState(false);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showMobileMoreSheet, setShowMobileMoreSheet] = useState(false);
   const [showMobileNotesDrawer, setShowMobileNotesDrawer] = useState(false);
   const [showQuickAddPopover, setShowQuickAddPopover] = useState(false);
@@ -294,6 +297,9 @@ export function App() {
     return 'Good evening';
   }, []);
 
+  const todayIso = format(new Date(), 'yyyy-MM-dd');
+  const isSelectedDateToday = selectedDate === todayIso;
+
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickTitle.trim()) return;
@@ -373,31 +379,38 @@ export function App() {
   // Summary line metrics for Today
   const plannedHours = Number((todayScore.plannedMinutes / 60).toFixed(1));
   const actualHours = Number((todayScore.actualMinutes / 60).toFixed(1));
-  const remainingMinutes = Math.max(0, todayScore.plannedMinutes - todayScore.actualMinutes);
-  const remainingHours = Number((remainingMinutes / 60).toFixed(1));
+  const focusTargetPct = Math.min(
+    100,
+    Math.round(
+      (todayScore.actualMinutes / Math.max(1, settings.dailyFocusTargetMinutes)) * 100
+    )
+  );
+
+  // Sync attention indicator (shown on avatar only when offline or sync needs attention)
+  const syncNeedsAttention = !pwaState.isOnline;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="h-screen overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       {/* Slim ~40px Floating Live Timer Bar (shown only when a timer runs) */}
       <ActiveFocusBar />
 
       {/* Single-Line Dismissible Demo Data Banner */}
       {isDemoData && !dismissedDemoBanner && (
         <div
-          className="bg-blue-50/90 dark:bg-blue-950/50 border-b border-blue-200/70 dark:border-blue-900/60 px-4 py-1.5 flex items-center justify-between gap-3 text-xs"
+          className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 py-1.5 flex items-center justify-between gap-3 text-xs shrink-0"
           data-testid="demo-data-banner"
         >
-          <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 truncate">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 truncate">
+            <Sparkles className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate">
-              <strong>Demo Data Active</strong> — Exploring 3 weeks of realistic sample tasks, habits &amp; logs.
+              <strong>Sample data active</strong> — Exploring 3 weeks of realistic sample tasks, habits &amp; logs.
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={clearDemoData}
-              className="font-semibold text-blue-700 dark:text-blue-300 hover:underline cursor-pointer"
+              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
             >
               Clear demo data
             </button>
@@ -405,7 +418,7 @@ export function App() {
               type="button"
               onClick={() => setDismissedDemoBanner(true)}
               aria-label="Dismiss demo data banner"
-              className="p-0.5 rounded hover:bg-blue-200/50 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-300 cursor-pointer"
+              className="p-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -414,49 +427,47 @@ export function App() {
       )}
 
       {/* Main Layout Shell */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT SIDEBAR (Desktop: 5 Main Pinned Items + Collapsible "More" + Collapsible Categories + Footer) */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* LEFT SIDEBAR (4.1f: Fixed Header, Scrollable Middle, Fixed Footer) */}
         <aside
-          className={`hidden md:flex flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 shrink-0 transition-all ${
+          className={`hidden md:flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 shrink-0 transition-all ${
             isSidebarCollapsed ? 'w-16' : 'w-60'
           }`}
           data-testid="desktop-sidebar"
         >
-          <div className="space-y-4 overflow-y-auto pr-0.5">
-            {/* Brand Logo + Collapse Rail Toggle */}
-            <div className="flex items-center justify-between px-1.5 py-1">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-xs shrink-0">
-                  <Flame className="w-4 h-4" />
-                </div>
-                {!isSidebarCollapsed && (
-                  <div className="truncate">
-                    <div className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
-                      DayForge
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Own Your Time
-                    </div>
-                  </div>
-                )}
+          {/* 1. Fixed Sidebar Header */}
+          <div className="flex items-center justify-between px-1.5 py-1 shrink-0">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0">
+                <Flame className="w-4 h-4" />
               </div>
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar to icon rail'}
-                title="Toggle Sidebar ([)"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                {isSidebarCollapsed ? (
-                  <PanelLeftOpen className="w-4 h-4" />
-                ) : (
-                  <PanelLeftClose className="w-4 h-4" />
-                )}
-              </button>
+              {!isSidebarCollapsed && (
+                <div className="truncate">
+                  <div className="font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
+                    DayForge
+                  </div>
+                </div>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar to icon rail'}
+              title="Toggle sidebar ([)"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
+          </div>
 
+          {/* 2. Scrollable Middle Navigation */}
+          <div className="flex-1 min-h-0 overflow-y-auto py-3 space-y-3 pr-0.5">
             {/* Primary 5 Pinned Navigation Items */}
-            <nav className="space-y-1" aria-label="Primary navigation">
+            <nav className="space-y-0.5" aria-label="Primary navigation">
               {mainSidebarItems.map((item) => {
                 const Icon = item.icon;
                 const active = activeNav === item.id;
@@ -466,13 +477,17 @@ export function App() {
                     type="button"
                     onClick={() => setActiveNav(item.id)}
                     title={item.label}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
                       active
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+                        ? 'bg-blue-50/90 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold border-l-2 border-blue-600 rounded-r-xl'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl'
                     }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
+                      }`}
+                    />
                     {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                   </button>
                 );
@@ -486,26 +501,26 @@ export function App() {
                     onClick={() => setMoreNavExpanded(!moreNavExpanded)}
                     data-testid="sidebar-more-toggle"
                     title="More pages"
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                       moreSidebarItems.some((i) => i.id === activeNav)
-                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/30'
-                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
                     }`}
                   >
                     <span className="flex items-center gap-3">
-                      <MoreHorizontal className="w-4 h-4 shrink-0" />
+                      <MoreHorizontal className="w-4 h-4 text-slate-400 shrink-0" />
                       {!isSidebarCollapsed && <span>More</span>}
                     </span>
                     {!isSidebarCollapsed &&
                       (moreNavExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5" />
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       ))}
                   </button>
 
                   {moreNavExpanded && (
-                    <div className="mt-1 space-y-0.5 pl-2 border-l border-slate-100 dark:border-slate-800 ml-3">
+                    <div className="mt-0.5 space-y-0.5 pl-2 border-l border-slate-100 dark:border-slate-800 ml-3">
                       {moreSidebarItems.map((item) => {
                         const Icon = item.icon;
                         const active = activeNav === item.id;
@@ -515,13 +530,17 @@ export function App() {
                             type="button"
                             onClick={() => setActiveNav(item.id)}
                             title={item.label}
-                            className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                            className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                               active
-                                ? 'bg-blue-600 text-white font-semibold'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                ? 'bg-blue-50/90 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold border-l-2 border-blue-600 rounded-r-lg'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 rounded-lg'
                             }`}
                           >
-                            <Icon className="w-3.5 h-3.5 shrink-0" />
+                            <Icon
+                              className={`w-3.5 h-3.5 shrink-0 ${
+                                active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
+                              }`}
+                            />
                             {!isSidebarCollapsed && (
                               <span className="truncate">{item.label}</span>
                             )}
@@ -534,19 +553,19 @@ export function App() {
               )}
             </nav>
 
-            {/* Collapsible Pinned Saved Views */}
+            {/* Collapsible Pinned views (sentence-case heading, collapsed by default) */}
             {!isSidebarCollapsed && pinnedSavedViews.length > 0 && (
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setPinnedViewsExpanded(!pinnedViewsExpanded)}
-                  className="w-full flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="w-full flex items-center justify-between px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
-                  <span>Pinned Views</span>
+                  <span>Pinned views</span>
                   {pinnedViewsExpanded ? (
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   ) : (
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                   )}
                 </button>
                 {pinnedViewsExpanded && (
@@ -561,7 +580,7 @@ export function App() {
                         }}
                         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                       >
-                        <Bookmark className="w-3 h-3 text-amber-500 shrink-0" />
+                        <Bookmark className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="truncate">{sv.name}</span>
                       </button>
                     ))}
@@ -570,19 +589,19 @@ export function App() {
               </div>
             )}
 
-            {/* Collapsible Categories List */}
+            {/* Collapsible Categories (sentence-case heading, collapsed by default) */}
             {!isSidebarCollapsed && (
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setCategoriesExpanded(!categoriesExpanded)}
-                  className="w-full flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="w-full flex items-center justify-between px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer tabular-nums"
                 >
                   <span>Categories ({categories.length})</span>
                   {categoriesExpanded ? (
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   ) : (
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                   )}
                 </button>
                 {categoriesExpanded && (
@@ -605,65 +624,71 @@ export function App() {
             )}
           </div>
 
-          {/* Bottom Pinned Footer: Where is everything? + Settings + One-line Score & Streak */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-            <button
-              type="button"
-              onClick={() => setActiveNav('help')}
-              data-testid="sidebar-help-btn"
-              title="Where is everything? (Feature Map)"
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                activeNav === 'help'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <HelpCircle className="w-4 h-4 shrink-0" />
-              {!isSidebarCollapsed && <span className="truncate">Where is everything?</span>}
-            </button>
+          {/* 3. Fixed Sidebar Footer: Settings + small "?" icon button + one-line "Score 47 · streak 21d" */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5 shrink-0">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveNav('settings')}
+                data-testid="sidebar-settings-btn"
+                title="Settings"
+                className={`flex-1 flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  activeNav === 'settings'
+                    ? 'bg-blue-50/90 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold border-l-2 border-blue-600 rounded-r-xl'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl'
+                }`}
+              >
+                <SettingsIcon
+                  className={`w-4 h-4 shrink-0 ${
+                    activeNav === 'settings' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
+                  }`}
+                />
+                {!isSidebarCollapsed && <span className="truncate">Settings</span>}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveNav('settings')}
-              data-testid="sidebar-settings-btn"
-              title="Settings"
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                activeNav === 'settings'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <SettingsIcon className="w-4 h-4 shrink-0" />
-              {!isSidebarCollapsed && <span className="truncate">Settings</span>}
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveNav('help')}
+                data-testid="sidebar-help-btn"
+                aria-label="Where is everything?"
+                title="Where is everything? (Feature guide)"
+                className={`p-1.5 rounded-xl transition-colors cursor-pointer shrink-0 ${
+                  activeNav === 'help'
+                    ? 'bg-blue-50/90 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+            </div>
 
-            {/* One-Line Score & Streak Footer */}
+            {/* One-line Score & Streak */}
             {!isSidebarCollapsed ? (
               <button
                 type="button"
                 onClick={() => setActiveNav('analytics')}
-                className="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 transition-colors cursor-pointer"
+                className="w-full px-2.5 py-1.5 rounded-lg text-left text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer tabular-nums flex items-center justify-between"
               >
                 <span>
                   Score{' '}
-                  <strong className="font-mono text-slate-900 dark:text-white">
+                  <strong className="font-semibold text-slate-800 dark:text-slate-200">
                     {todayScore.productivityScore ?? '—'}
+                  </strong>{' '}
+                  · streak{' '}
+                  <strong className="font-semibold text-slate-800 dark:text-slate-200">
+                    {streaksSummary.currentStreak}d
                   </strong>
-                  /100
                 </span>
-                <span className="inline-flex items-center gap-1 font-mono text-amber-600 dark:text-amber-400 font-bold">
-                  <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  {streaksSummary.currentStreak}d
-                </span>
+                <Flame className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setActiveNav('analytics')}
-                title={`Score ${todayScore.productivityScore ?? 0}/100 · Streak ${streaksSummary.currentStreak}d`}
-                className="w-full py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-[10px] font-mono font-bold text-center text-amber-600 dark:text-amber-400 cursor-pointer"
+                title={`Score ${todayScore.productivityScore ?? 0} · streak ${streaksSummary.currentStreak}d`}
+                className="w-full py-1 rounded-lg text-xs tabular-nums font-medium text-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
-                🔥{streaksSummary.currentStreak}
+                {streaksSummary.currentStreak}d
               </button>
             )}
           </div>
@@ -671,128 +696,126 @@ export function App() {
 
         {/* CENTER CONTENT WORKSPACE */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-6">
-          {/* Calm Top Bar */}
-          <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-            {/* Left: Date Selector */}
-            <div className="flex items-center gap-2.5 min-w-0">
-              <input
-                type="date"
-                aria-label="Selected planner date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 cursor-pointer"
-              />
-              {selectedDate !== format(new Date(), 'yyyy-MM-dd') && (
+          {/* 4.1a Top Bar: [date control] ... [New Task] [Search] [Bell] [Notes toggle] [Avatar] */}
+          <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
+            {/* Left: Compact Date Control (< Fri, 13 Nov > [Today]) */}
+            <div className="flex items-center gap-1 min-w-0">
+              <div className="inline-flex items-center rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 p-0.5">
                 <button
                   type="button"
-                  onClick={() => setSelectedDate(format(new Date(), 'yyyy-MM-dd'))}
-                  className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 cursor-pointer"
+                  onClick={() =>
+                    setSelectedDate(format(subDays(parseISO(selectedDate), 1), 'yyyy-MM-dd'))
+                  }
+                  aria-label="Previous day"
+                  title="Previous day"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = datePickerRef.current;
+                      if (el) {
+                        if (typeof el.showPicker === 'function') {
+                          try {
+                            el.showPicker();
+                          } catch {
+                            el.focus();
+                          }
+                        } else {
+                          el.focus();
+                          el.click();
+                        }
+                      }
+                    }}
+                    data-testid="topbar-date-label"
+                    title="Click to pick a date"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap tabular-nums"
+                  >
+                    {format(parseISO(selectedDate), 'EEE, d MMM')}
+                  </button>
+                  <input
+                    ref={datePickerRef}
+                    type="date"
+                    aria-label="Selected planner date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      if (e.target.value) setSelectedDate(e.target.value);
+                    }}
+                    className="sr-only"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedDate(format(addDays(parseISO(selectedDate), 1), 'yyyy-MM-dd'))
+                  }
+                  aria-label="Next day"
+                  title="Next day"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {!isSelectedDateToday && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(todayIso)}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium transition-colors cursor-pointer"
                 >
                   Today
                 </button>
               )}
             </div>
 
-            {/* Right-Hand Cluster: Quick Add (+), Search / Ctrl+K, Notifications, Sync Status, Dark Mode, Notes Toggle, Account Avatar */}
-            <div className="flex items-center gap-1.5">
-              {/* Quick Add (+) Button (on mobile, bottom bar has center + button) */}
+            {/* Right: [New Task] [Search] [Bell] [Notes toggle] [Avatar] */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Primary Solid-Blue Button: New Task (on mobile, shows compact + button) */}
               <button
                 type="button"
                 onClick={() => openNewTaskModalWithDefaults({ date: selectedDate })}
                 data-testid="topbar-new-task-btn"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                aria-label="New task (N)"
+                title="New task (N)"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>New Task</span>
+                <span className="hidden sm:inline">New task</span>
               </button>
 
-              {/* Global Search / Command Palette (Ctrl+K) */}
+              {/* Search (icon-only, shortcut in tooltip) */}
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
-                aria-label="Open Command Palette (Ctrl+K)"
-                title="Search & Commands (Ctrl+K)"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800 hover:bg-slate-200/70 text-slate-600 dark:text-slate-300 text-xs font-medium cursor-pointer"
+                aria-label="Search and commands (Ctrl+K)"
+                title="Search & commands (Ctrl+K)"
+                className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
               >
-                <Search className="w-3.5 h-3.5" />
-                <kbd className="hidden lg:inline text-[10px] font-mono text-slate-400">
-                  ⌘K
-                </kbd>
+                <Search className="w-4 h-4" />
               </button>
 
-              {/* Notification Bell */}
-              <NotificationCenterBell />
-
-              {/* Reserved Sync Status Slot (Local-only in 4.0, Cloud Sync in 4A) */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowSyncPopover((v) => !v)}
-                  data-testid="sync-status-chip"
-                  title="Storage & Cloud Sync Status"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800 hover:bg-slate-200/70 text-slate-600 dark:text-slate-300 text-xs font-medium cursor-pointer"
-                >
-                  <Cloud className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="hidden xl:inline text-[11px]">Local</span>
-                </button>
-
-                {showSyncPopover && (
-                  <div className="absolute right-0 mt-2 z-40 w-72 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 dark:text-slate-100">
-                        Local-Only Mode Active
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold">
-                        Saved on device
-                      </span>
-                    </div>
-                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                      All data is stored safely in this browser. Cloud account &amp; multi-device sync will plug into this slot in Phase 4A.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSyncPopover(false);
-                        setActiveSettingsSection('account');
-                        setActiveNav('settings');
-                      }}
-                      className="w-full py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
-                    >
-                      Account &amp; Backup Settings →
-                    </button>
-                  </div>
-                )}
+              {/* Notification Bell (hidden on 360px mobile to keep top bar clean; reachable in Avatar menu) */}
+              <div className="hidden sm:block">
+                <NotificationCenterBell />
               </div>
 
-              {/* PWA Install Button (when installable) */}
+              {/* PWA Install Button when applicable on desktop */}
               {pwaState.isInstallable && (
-                <PWAInstallButton
-                  compact
-                  isInstalled={pwaState.isInstalled}
-                  onTriggerInstall={pwaState.triggerInstallPrompt}
-                />
+                <div className="hidden lg:block">
+                  <PWAInstallButton
+                    compact
+                    isInstalled={pwaState.isInstalled}
+                    onTriggerInstall={pwaState.triggerInstallPrompt}
+                  />
+                </div>
               )}
 
-              {/* Dark / Light Mode Toggle */}
-              <button
-                type="button"
-                aria-label="Toggle dark mode"
-                onClick={() =>
-                  updateSettings({
-                    theme: settings.theme === 'dark' ? 'light' : 'dark',
-                  })
-                }
-                title="Switch Light / Dark Mode"
-                className="p-2 rounded-xl bg-slate-100/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 transition-colors cursor-pointer"
-              >
-                {settings.theme === 'dark' ? (
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 text-slate-600" />
-                )}
-              </button>
-
-              {/* Right Notes Pane Toggle */}
+              {/* Notes Toggle (hidden on 360px mobile; reachable in bottom nav & Avatar menu) */}
               <button
                 type="button"
                 onClick={() => {
@@ -802,38 +825,139 @@ export function App() {
                     toggleRightPane();
                   }
                 }}
-                aria-label={isRightPaneOpen ? 'Collapse notes pane' : 'Expand notes pane'}
-                title="Toggle Notes Pane (])"
-                className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                aria-label={isRightPaneOpen ? 'Hide notes panel' : 'Show notes panel'}
+                title="Toggle notes panel (])"
+                className={`hidden sm:inline-flex p-2 rounded-xl transition-colors cursor-pointer ${
                   isRightPaneOpen || showMobileNotesDrawer
-                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
-                    : 'bg-slate-100/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70'
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
                 {isRightPaneOpen ? (
-                  <PanelRightClose className="w-3.5 h-3.5" />
+                  <PanelRightClose className="w-4 h-4" />
                 ) : (
-                  <PanelRightOpen className="w-3.5 h-3.5" />
+                  <PanelRightOpen className="w-4 h-4" />
                 )}
               </button>
 
-              {/* Account Avatar Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSettingsSection('account');
-                  setActiveNav('settings');
-                }}
-                aria-label="Account and profile settings"
-                title={`${settings.name || 'User'} · Local Mode`}
-                className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer shrink-0"
-              >
-                {(settings.name || 'U').slice(0, 1).toUpperCase()}
-              </button>
+              {/* Avatar Menu (holds Theme toggle, Sync status "Local", Account settings & mobile quick actions) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarMenu((v) => !v)}
+                  data-testid="avatar-menu-btn"
+                  aria-label="Account, theme and sync menu"
+                  title={`${settings.name || 'User'} · Theme & sync`}
+                  className="relative w-7 h-7 rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center justify-center hover:ring-2 hover:ring-slate-300 dark:hover:ring-slate-700 transition-all cursor-pointer shrink-0"
+                >
+                  {(settings.name || 'U').slice(0, 1).toUpperCase()}
+                  {syncNeedsAttention && (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900"
+                      title="Offline — changes saved on device"
+                    />
+                  )}
+                </button>
+
+                {showAvatarMenu && (
+                  <div
+                    className="absolute right-0 mt-2 z-40 w-64 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-3"
+                    data-testid="avatar-popover-menu"
+                  >
+                    {/* User & Sync status */}
+                    <div className="pb-2.5 border-b border-slate-100 dark:border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-900 dark:text-white truncate">
+                          {settings.name || 'Builder'}
+                        </span>
+                        <span
+                          data-testid="sync-status-chip"
+                          className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400"
+                        >
+                          <Cloud className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Local</span>
+                        </span>
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        {syncNeedsAttention
+                          ? 'Offline — changes saved on this device.'
+                          : 'Saved locally on this device.'}
+                      </p>
+                    </div>
+
+                    {/* Theme selector (Light / Dark / System) */}
+                    <div className="space-y-1.5">
+                      <div className="text-slate-500 dark:text-slate-400 font-medium">
+                        Theme
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800">
+                        {(['light', 'dark', 'system'] as const).map((mode) => {
+                          const active = settings.theme === mode;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              aria-label={mode === 'dark' ? 'Toggle dark mode' : `Set ${mode} theme`}
+                              onClick={() => updateSettings({ theme: mode })}
+                              className={`py-1 rounded-lg text-xs font-medium capitalize transition-colors cursor-pointer ${
+                                active
+                                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Quick actions */}
+                    <div className="pt-1 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAvatarMenu(false);
+                          setShowMobileNotesDrawer(true);
+                        }}
+                        className="sm:hidden w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
+                      >
+                        <span>Open notes drawer</span>
+                        <PanelRightOpen className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAvatarMenu(false);
+                          setActiveSettingsSection('account');
+                          setActiveNav('settings');
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
+                      >
+                        <span>Account &amp; backup</span>
+                        <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAvatarMenu(false);
+                          setActiveNav('help');
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
+                      >
+                        <span>Where is everything?</span>
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </header>
 
-          {/* Main Workspace Grid (Center View + Right Notes Pane on Today/Tasks) */}
+          {/* Main Workspace Grid (Center View + Right Notes Pane on Today) */}
           <div className="flex-1 p-4 sm:p-6 max-w-[1600px] w-full mx-auto">
             {activeNav === 'today' && (
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
@@ -841,65 +965,60 @@ export function App() {
                 <div
                   className={`${
                     isRightPaneOpen ? 'xl:col-span-8' : 'xl:col-span-12'
-                  } space-y-5`}
+                  } space-y-4`}
                 >
-                  {/* ABOVE THE FOLD: Greeting + Date, ONE Summary Line, List/Timeline Switch, and Slim Quick-Add */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4">
-                    {/* Top Row: Greeting & Date + List/Timeline Switch + More Actions Menu */}
+                  {/* 4.1b GREETING CARD (No boxes inside boxes; spacing + thin dividers) */}
+                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-3.5">
+                    {/* Top Row: Greeting (no duplicate date) + List/Timeline Switch + Actions (...) */}
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                          {greetingText}, {settings.name || 'Builder'}
-                        </h1>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {format(parseISO(selectedDate), 'EEEE, MMMM d, yyyy')}
-                        </p>
-                      </div>
+                      <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight">
+                        {greetingText}, {settings.name || 'Builder'}
+                      </h1>
 
                       <div className="flex items-center gap-2">
                         {/* Segmented List / Timeline Switch */}
-                        <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+                        <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
                           <button
                             type="button"
                             onClick={() => setTodaySubView('list')}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                               todaySubView === 'list'
                                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
                                 : 'text-slate-600 dark:text-slate-400'
                             }`}
                           >
-                            <List className="w-3.5 h-3.5" />
+                            <List className="w-3.5 h-3.5 text-slate-400" />
                             List
                           </button>
                           <button
                             type="button"
                             onClick={() => setTodaySubView('timeline')}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                               todaySubView === 'timeline'
                                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
                                 : 'text-slate-600 dark:text-slate-400'
                             }`}
                           >
-                            <Clock className="w-3.5 h-3.5" />
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
                             Timeline
                           </button>
                         </div>
 
-                        {/* Secondary Actions "..." Menu (Wrap up day, Replan my day, AI Schedule Architect) */}
+                        {/* Secondary Actions "..." Menu */}
                         <div className="relative">
                           <button
                             type="button"
                             onClick={() => setShowTodayMoreMenu((v) => !v)}
                             data-testid="today-more-actions-btn"
                             aria-label="More actions for today"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            <MoreHorizontal className="w-4 h-4 text-slate-400" />
                             <span className="hidden sm:inline">Actions</span>
                           </button>
 
                           {showTodayMoreMenu && (
-                            <div className="absolute right-0 mt-2 z-30 w-60 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-1 text-xs">
+                            <div className="absolute right-0 mt-2 z-30 w-56 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-0.5 text-xs">
                               <button
                                 type="button"
                                 data-testid="wrap-up-day-btn"
@@ -907,13 +1026,13 @@ export function App() {
                                   setShowTodayMoreMenu(false);
                                   setWrapUpModalOpen(true);
                                 }}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                               >
                                 <span className="flex items-center gap-2">
-                                  <Moon className="w-3.5 h-3.5 text-indigo-600" />
+                                  <Moon className="w-3.5 h-3.5 text-slate-400" />
                                   Wrap up day ritual
                                 </span>
-                                <kbd className="text-[10px] font-mono text-slate-400">W</kbd>
+                                <span className="text-slate-400 tabular-nums">W</span>
                               </button>
 
                               <button
@@ -923,10 +1042,10 @@ export function App() {
                                   setShowTodayMoreMenu(false);
                                   setReplanModalOpen(true);
                                 }}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                               >
                                 <span className="flex items-center gap-2">
-                                  <Wand2 className="w-3.5 h-3.5 text-amber-600" />
+                                  <Wand2 className="w-3.5 h-3.5 text-slate-400" />
                                   Replan my day
                                 </span>
                               </button>
@@ -937,11 +1056,11 @@ export function App() {
                                   setShowTodayMoreMenu(false);
                                   setIsAIModalOpen(true);
                                 }}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer"
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                               >
                                 <span className="flex items-center gap-2">
-                                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                                  AI Schedule Architect
+                                  <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                                  AI schedule architect
                                 </span>
                               </button>
                             </div>
@@ -950,15 +1069,15 @@ export function App() {
                       </div>
                     </div>
 
-                    {/* ONE Summary Line: Progress Ring + "X of Y done · Zh planned · Wh left" + Load Warning Badge */}
+                    {/* Summary Line (no nested box; just spacing + thin divider) */}
                     <div
-                      className="flex flex-wrap items-center justify-between gap-3 py-2.5 px-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800"
+                      className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300 tabular-nums"
                       data-testid="today-summary-line"
                     >
-                      <div className="flex flex-wrap items-center gap-3">
-                        {/* Mini Progress Ring */}
-                        <div className="relative w-7 h-7 flex items-center justify-center shrink-0">
-                          <svg className="w-7 h-7 -rotate-90" viewBox="0 0 36 36">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Progress Ring */}
+                        <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
+                          <svg className="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
                             <circle
                               cx="18"
                               cy="18"
@@ -978,58 +1097,68 @@ export function App() {
                               strokeLinecap="round"
                             />
                           </svg>
-                          <span className="absolute text-[9px] font-mono font-bold text-slate-700 dark:text-slate-200">
-                            {Math.round(todayScore.completionRate)}%
-                          </span>
                         </div>
 
-                        <div className="text-xs text-slate-700 dark:text-slate-200 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                           <span>
-                            <strong className="font-mono">{todayScore.completedCount}</strong> of{' '}
-                            <strong className="font-mono">{todayScore.plannedCount}</strong> done
+                            <strong className="font-semibold text-slate-900 dark:text-white">
+                              {todayScore.completedCount}
+                            </strong>{' '}
+                            of{' '}
+                            <strong className="font-semibold text-slate-900 dark:text-white">
+                              {todayScore.plannedCount}
+                            </strong>{' '}
+                            done
                           </span>
-                          <span className="text-slate-300 dark:text-slate-600">·</span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
                           <span>
-                            <strong className="font-mono">{plannedHours}h</strong> planned
+                            <strong className="font-semibold text-slate-900 dark:text-white">
+                              {plannedHours}h
+                            </strong>{' '}
+                            planned
                           </span>
-                          <span className="text-slate-300 dark:text-slate-600">·</span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
                           <span>
-                            <strong className="font-mono">{actualHours}h</strong> focused ({remainingHours}h left)
+                            <strong className="font-semibold text-slate-900 dark:text-white">
+                              {actualHours}h
+                            </strong>{' '}
+                            focused
                           </span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <SmartLoadHeaderBadge dateStr={selectedDate} compact />
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <SmartLoadHeaderBadge dateStr={selectedDate} compact />
                       </div>
                     </div>
 
-                    {/* Slim Quick-Add Input ("Add a task... press N or Q") */}
-                    <form onSubmit={handleQuickAddSubmit} className="space-y-2">
+                    {/* Quick-Add Input (no nested box; separated by thin divider; Add button appears only while typing) */}
+                    <form
+                      onSubmit={handleQuickAddSubmit}
+                      className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2"
+                    >
                       <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <Plus className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="text"
-                            data-testid="quick-add-task-input"
-                            value={quickTitle}
-                            onFocus={() => setShowQuickAddPopover(true)}
-                            onChange={(e) => setQuickTitle(e.target.value)}
-                            placeholder="Add a task for today... (Press Q to focus or N for full form)"
-                            className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <button
-                          type="submit"
-                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors cursor-pointer shrink-0"
-                        >
-                          Add
-                        </button>
+                        <Plus className="w-4 h-4 text-slate-400 shrink-0" />
+                        <input
+                          type="text"
+                          data-testid="quick-add-task-input"
+                          value={quickTitle}
+                          onFocus={() => setShowQuickAddPopover(true)}
+                          onChange={(e) => setQuickTitle(e.target.value)}
+                          placeholder="Add a task... (N for full form)"
+                          className="flex-1 py-1 bg-transparent text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+                        />
+                        {quickTitle.trim().length > 0 && (
+                          <button
+                            type="submit"
+                            className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium transition-colors cursor-pointer shrink-0"
+                          >
+                            Add
+                          </button>
+                        )}
                       </div>
 
-                      {/* Optional inline quick options shown when typing or focused */}
-                      {(showQuickAddPopover || quickTitle.trim().length > 0) && (
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px]">
+                      {/* Optional inline quick options shown only when typing */}
+                      {(showQuickAddPopover && quickTitle.trim().length > 0) && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs tabular-nums">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <select
                               aria-label="Quick task category"
@@ -1050,8 +1179,8 @@ export function App() {
                               onChange={(e) => setQuickPriority(e.target.value as Priority)}
                               className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                             >
-                              <option value="High">High Priority</option>
-                              <option value="Med">Med</option>
+                              <option value="High">High priority</option>
+                              <option value="Med">Medium</option>
                               <option value="Low">Low</option>
                             </select>
 
@@ -1060,14 +1189,14 @@ export function App() {
                               aria-label="Quick task start time"
                               value={quickStart}
                               onChange={(e) => setQuickStart(e.target.value)}
-                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-slate-700 dark:text-slate-200"
+                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                             />
 
                             <select
                               aria-label="Quick task duration"
                               value={quickDuration}
                               onChange={(e) => setQuickDuration(Number(e.target.value))}
-                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-slate-700 dark:text-slate-200"
+                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                             >
                               <option value={15}>15m</option>
                               <option value={30}>30m</option>
@@ -1090,10 +1219,10 @@ export function App() {
                     </form>
                   </div>
 
-                  {/* "TODAY'S EXTRAS" COMPACT CHIP ROW (Toggleable in Settings > Appearance) */}
+                  {/* 4.1c TODAY'S EXTRAS ROW (Smaller neutral grey chips; merged "Daily goal" chip) */}
                   {showTodaysExtras && (
-                    <div className="space-y-2.5" data-testid="todays-extras-section">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="space-y-2" data-testid="todays-extras-section">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {/* 1. Habits X/Y Chip */}
                         <button
                           type="button"
@@ -1103,22 +1232,19 @@ export function App() {
                               prev === 'habits' ? null : 'habits'
                             )
                           }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer tabular-nums ${
                             activeExtraChip === 'habits'
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
-                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                              ? 'border-blue-500 bg-blue-50/70 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Repeat className="w-3.5 h-3.5 text-emerald-600" />
+                          <Repeat className="w-3.5 h-3.5 text-slate-400" />
                           <span>
-                            Habits{' '}
-                            <strong className="font-mono">
-                              {habitsProgressToday.completedCount}/{habitsProgressToday.dueCount}
-                            </strong>
+                            Habits {habitsProgressToday.completedCount}/{habitsProgressToday.dueCount}
                           </span>
                         </button>
 
-                        {/* 2. Mood & Energy Chip */}
+                        {/* 2. Mood & energy Chip */}
                         <button
                           type="button"
                           data-testid="extra-chip-mood"
@@ -1127,21 +1253,21 @@ export function App() {
                               prev === 'mood' ? null : 'mood'
                             )
                           }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer tabular-nums ${
                             activeExtraChip === 'mood'
-                              ? 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200'
-                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                              ? 'border-blue-500 bg-blue-50/70 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Smile className="w-3.5 h-3.5 text-emerald-500" />
+                          <Smile className="w-3.5 h-3.5 text-slate-400" />
                           <span>
                             {currentMoodLog
                               ? `Mood ${currentMoodLog.mood}/5 · Energy ${currentMoodLog.energy}/5`
-                              : 'Mood & Energy'}
+                              : 'Mood & energy'}
                           </span>
                         </button>
 
-                        {/* 3. Daily Goal Chip */}
+                        {/* 3. Merged "Daily goal" Chip (holds both daily goal and focus target) */}
                         <button
                           type="button"
                           data-testid="extra-chip-goal"
@@ -1150,53 +1276,21 @@ export function App() {
                               prev === 'goal' ? null : 'goal'
                             )
                           }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer max-w-xs truncate ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer max-w-xs truncate tabular-nums ${
                             activeExtraChip === 'goal'
-                              ? 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200'
-                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                              ? 'border-blue-500 bg-blue-50/70 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Target className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="truncate">
                             {currentReview?.dailyGoal
-                              ? `Goal: ${currentReview.dailyGoal}`
-                              : 'Set Daily Goal'}
+                              ? `Daily goal: ${currentReview.dailyGoal} (${focusTargetPct}%)`
+                              : `Daily goal · ${focusTargetPct}%`}
                           </span>
                         </button>
 
-                        {/* 4. Focus Target Chip */}
-                        <button
-                          type="button"
-                          data-testid="extra-chip-focus"
-                          onClick={() =>
-                            setActiveExtraChip((prev) =>
-                              prev === 'focus' ? null : 'focus'
-                            )
-                          }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
-                            activeExtraChip === 'focus'
-                              ? 'border-teal-500 bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-200'
-                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                          }`}
-                        >
-                          <Clock className="w-3.5 h-3.5 text-teal-600" />
-                          <span>
-                            Focus Target{' '}
-                            <strong className="font-mono">
-                              {Math.min(
-                                100,
-                                Math.round(
-                                  (todayScore.actualMinutes /
-                                    Math.max(1, settings.dailyFocusTargetMinutes)) *
-                                    100
-                                )
-                              )}
-                              %
-                            </strong>
-                          </span>
-                        </button>
-
-                        {/* 5. Motivation Quote Chip */}
+                        {/* 4. Motivation Chip */}
                         <button
                           type="button"
                           data-testid="extra-chip-quote"
@@ -1205,17 +1299,17 @@ export function App() {
                               prev === 'quote' ? null : 'quote'
                             )
                           }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
                             activeExtraChip === 'quote'
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-200'
-                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                              ? 'border-blue-500 bg-blue-50/70 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                              : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                           }`}
                         >
-                          <Quote className="w-3.5 h-3.5 text-indigo-500" />
+                          <Quote className="w-3.5 h-3.5 text-slate-400" />
                           <span>Motivation</span>
                         </button>
 
-                        {/* 6. Yesterday Unfinished Carry-Forward Chip (if any) */}
+                        {/* 5. Unfinished from yesterday Chip (if any) */}
                         {yesterdayUnfinished.length > 0 && (
                           <button
                             type="button"
@@ -1225,14 +1319,14 @@ export function App() {
                                 prev === 'unfinished' ? null : 'unfinished'
                               )
                             }
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer tabular-nums ${
                               activeExtraChip === 'unfinished'
-                                ? 'border-amber-500 bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200'
-                                : 'border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300'
+                                ? 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200'
+                                : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                             }`}
                           >
-                            <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                            <span>{yesterdayUnfinished.length} Unfinished from Yesterday</span>
+                            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{yesterdayUnfinished.length} unfinished from yesterday</span>
                           </button>
                         )}
                       </div>
@@ -1248,8 +1342,8 @@ export function App() {
                         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
                           <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2">
-                              <Smile className="w-4 h-4 text-emerald-500" />
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <Smile className="w-4 h-4 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                                 Mood:
                               </span>
                               <div className="flex items-center gap-1">
@@ -1276,7 +1370,7 @@ export function App() {
                                       }
                                       className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-transform cursor-pointer ${
                                         active
-                                          ? 'bg-emerald-100 dark:bg-emerald-950/70 ring-2 ring-emerald-500 scale-105'
+                                          ? 'bg-blue-50 dark:bg-blue-950/70 ring-2 ring-blue-500 scale-105'
                                           : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100'
                                       }`}
                                     >
@@ -1288,8 +1382,8 @@ export function App() {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <BatteryCharging className="w-4 h-4 text-amber-500" />
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <BatteryCharging className="w-4 h-4 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                                 Energy:
                               </span>
                               <div className="flex items-center gap-1">
@@ -1308,13 +1402,13 @@ export function App() {
                                           en
                                         )
                                       }
-                                      className={`px-2 py-1 rounded-md text-xs font-mono font-bold transition-colors cursor-pointer ${
+                                      className={`px-2 py-1 rounded-md text-xs tabular-nums font-medium transition-colors cursor-pointer ${
                                         active
-                                          ? 'bg-amber-500 text-white'
+                                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                       }`}
                                     >
-                                      {en}⚡
+                                      {en}/5
                                     </button>
                                   );
                                 })}
@@ -1332,79 +1426,71 @@ export function App() {
                         </div>
                       )}
 
+                      {/* Merged Daily goal + Focus target popover */}
                       {activeExtraChip === 'goal' && (
-                        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
-                          <Target className="w-4 h-4 text-blue-600 shrink-0" />
-                          <input
-                            type="text"
-                            aria-label="Daily goal highlight"
-                            value={currentReview?.dailyGoal || ''}
-                            onChange={(e) => setDailyGoal(selectedDate, e.target.value)}
-                            placeholder="Set your #1 non-negotiable outcome for today..."
-                            className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setActiveExtraChip(null)}
-                            className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            Done
-                          </button>
-                        </div>
-                      )}
-
-                      {activeExtraChip === 'focus' && (
-                        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between font-medium">
-                              <span className="text-slate-600 dark:text-slate-400">
-                                Daily Focus Target
-                              </span>
-                              <span className="font-mono font-bold">
-                                {todayScore.actualMinutes}m / {settings.dailyFocusTargetMinutes}m
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                              <div
-                                className="h-full bg-blue-600 rounded-full transition-all"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    Math.round(
-                                      (todayScore.actualMinutes /
-                                        Math.max(1, settings.dailyFocusTargetMinutes)) *
-                                        100
-                                    )
-                                  )}%`,
-                                }}
-                              />
-                            </div>
+                        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-3.5 text-xs">
+                          <div className="flex items-center gap-2.5">
+                            <Target className="w-4 h-4 text-slate-400 shrink-0" />
+                            <input
+                              type="text"
+                              aria-label="Daily goal highlight"
+                              value={currentReview?.dailyGoal || ''}
+                              onChange={(e) => setDailyGoal(selectedDate, e.target.value)}
+                              placeholder="Set your main outcome for today..."
+                              className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setActiveExtraChip(null)}
+                              className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              Done
+                            </button>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between font-medium">
-                              <span className="text-slate-600 dark:text-slate-400">
-                                Weekly Focus Target
-                              </span>
-                              <span className="font-mono font-bold">
-                                {Math.round(weeklyFocusMins / 60)}h /{' '}
-                                {Math.round((settings.weeklyFocusTargetMinutes || 1200) / 60)}h
-                              </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800 tabular-nums">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between font-medium">
+                                <span className="text-slate-600 dark:text-slate-400">
+                                  Daily focus target
+                                </span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {todayScore.actualMinutes}m / {settings.dailyFocusTargetMinutes}m
+                                </span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-600 rounded-full transition-all"
+                                  style={{ width: `${focusTargetPct}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                              <div
-                                className="h-full bg-teal-600 rounded-full transition-all"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    Math.round(
-                                      (weeklyFocusMins /
-                                        Math.max(1, settings.weeklyFocusTargetMinutes || 1200)) *
-                                        100
-                                    )
-                                  )}%`,
-                                }}
-                              />
+
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between font-medium">
+                                <span className="text-slate-600 dark:text-slate-400">
+                                  Weekly focus target
+                                </span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {Math.round(weeklyFocusMins / 60)}h /{' '}
+                                  {Math.round((settings.weeklyFocusTargetMinutes || 1200) / 60)}h
+                                </span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-600 rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      Math.round(
+                                        (weeklyFocusMins /
+                                          Math.max(1, settings.weeklyFocusTargetMinutes || 1200)) *
+                                          100
+                                      )
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1413,7 +1499,7 @@ export function App() {
                       {activeExtraChip === 'quote' && (
                         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 text-xs">
                           <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300 italic">
-                            <Quote className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                            <Quote className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                             <span>&ldquo;{dailyQuote}&rdquo;</span>
                           </div>
                           <button
@@ -1427,10 +1513,10 @@ export function App() {
                       )}
 
                       {activeExtraChip === 'unfinished' && yesterdayUnfinished.length > 0 && (
-                        <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 space-y-2.5">
+                        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2.5">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                              {yesterdayUnfinished.length} Unfinished Task(s) from {yesterdayStr}
+                            <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                              {yesterdayUnfinished.length} unfinished task(s) from {yesterdayStr}
                             </span>
                             <button
                               type="button"
@@ -1441,29 +1527,27 @@ export function App() {
                                 );
                                 setActiveExtraChip(null);
                               }}
-                              className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold cursor-pointer"
+                              className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer"
                             >
-                              Move All to Today
+                              Move all to today
                             </button>
                           </div>
                           <div className="space-y-1.5">
                             {yesterdayUnfinished.map((ut) => (
                               <div
                                 key={ut.id}
-                                className="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-amber-200/60 dark:border-slate-800 text-xs"
+                                className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 rounded-xl text-xs"
                               >
                                 <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
                                   {ut.title}
                                 </span>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => carryForwardTasks([ut.id], selectedDate)}
-                                    className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-medium cursor-pointer"
-                                  >
-                                    Move to Today
-                                  </button>
-                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => carryForwardTasks([ut.id], selectedDate)}
+                                  className="px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 font-medium cursor-pointer shrink-0"
+                                >
+                                  Move to today
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -1481,6 +1565,9 @@ export function App() {
                         setIsTaskModalOpen(true);
                       }}
                       onOpenNoteForTask={handleOpenNoteForTask}
+                      onOpenNewTaskModal={() =>
+                        openNewTaskModalWithDefaults({ date: selectedDate })
+                      }
                     />
                   ) : (
                     <HourlyTimelineView
@@ -1513,8 +1600,8 @@ export function App() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                      Side-by-Side Notes Drawer
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                      Notes drawer
                     </span>
                     <button
                       type="button"
@@ -1612,9 +1699,9 @@ export function App() {
             setShowMobileMoreSheet(false);
             setActiveNav('today');
           }}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold cursor-pointer ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[11px] font-medium cursor-pointer ${
             activeNav === 'today'
-              ? 'text-blue-600 dark:text-blue-400'
+              ? 'text-blue-600 dark:text-blue-400 font-semibold'
               : 'text-slate-500 dark:text-slate-400'
           }`}
         >
@@ -1628,9 +1715,9 @@ export function App() {
             setShowMobileMoreSheet(false);
             setActiveNav('calendar');
           }}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold cursor-pointer ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[11px] font-medium cursor-pointer ${
             activeNav === 'calendar'
-              ? 'text-blue-600 dark:text-blue-400'
+              ? 'text-blue-600 dark:text-blue-400 font-semibold'
               : 'text-slate-500 dark:text-slate-400'
           }`}
         >
@@ -1654,9 +1741,9 @@ export function App() {
             setShowMobileMoreSheet(false);
             setActiveNav('notes');
           }}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold cursor-pointer ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[11px] font-medium cursor-pointer ${
             activeNav === 'notes'
-              ? 'text-blue-600 dark:text-blue-400'
+              ? 'text-blue-600 dark:text-blue-400 font-semibold'
               : 'text-slate-500 dark:text-slate-400'
           }`}
         >
@@ -1668,9 +1755,9 @@ export function App() {
           type="button"
           data-testid="mobile-more-btn"
           onClick={() => setShowMobileMoreSheet((v) => !v)}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold cursor-pointer ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[11px] font-medium cursor-pointer ${
             showMobileMoreSheet
-              ? 'text-blue-600 dark:text-blue-400'
+              ? 'text-blue-600 dark:text-blue-400 font-semibold'
               : 'text-slate-500 dark:text-slate-400'
           }`}
         >
@@ -1690,8 +1777,8 @@ export function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-900 dark:text-white">
-                All DayForge Workspaces
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                All workspaces
               </span>
               <button
                 type="button"
@@ -1718,13 +1805,13 @@ export function App() {
                       setActiveNav(item.id);
                       setShowMobileMoreSheet(false);
                     }}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-semibold text-left border transition-colors ${
+                    className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium text-left border transition-colors ${
                       active
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-blue-50/90 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-500 font-semibold'
                         : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200/70 dark:border-slate-800 text-slate-700 dark:text-slate-200'
                     }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
+                    <Icon className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );

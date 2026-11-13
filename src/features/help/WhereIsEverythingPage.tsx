@@ -3,12 +3,10 @@ import {
   ArrowRight,
   CheckCircle2,
   Compass,
-  HelpCircle,
   Keyboard,
   Search,
-  Sparkles,
 } from 'lucide-react';
-import { NavSection, useDayForgeStore } from '../../store/useDayForgeStore';
+import { useDayForgeStore } from '../../store/useDayForgeStore';
 import {
   AnalyticsTabId,
   useUIPreferencesStore,
@@ -16,7 +14,7 @@ import {
 
 export interface FeatureMapEntry {
   id: string;
-  phase: 'Phase 1' | 'Phase 2' | 'Phase 3' | 'Phase 4.0';
+  phase: 'Phase 1' | 'Phase 2' | 'Phase 3' | 'Phase 4.0' | 'Phase 4.1';
   category:
     | 'Planning & Tasks'
     | 'Time & Focus'
@@ -72,8 +70,8 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-today-plan',
         phase: 'Phase 1',
         category: 'Planning & Tasks',
-        feature: 'Today Plan (List & Timeline Time-Blocking)',
-        whereItLivesNow: 'Sidebar → Today (segmented List / Timeline switch in header)',
+        feature: 'Today plan (List & Timeline time-blocking)',
+        whereItLivesNow: 'Sidebar → Today (segmented List / Timeline switch in greeting card)',
         shortcut: 'G then T',
         actionLabel: 'Open Today',
         onNavigate: () => setActiveNav('today'),
@@ -82,35 +80,35 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-quick-add',
         phase: 'Phase 1',
         category: 'Planning & Tasks',
-        feature: 'Quick-Add Task Input & Full Task Modal',
-        whereItLivesNow: 'Today page top input bar, Top bar "+" button, or Mobile bottom bar "+"',
+        feature: 'Quick-add task input & full task modal',
+        whereItLivesNow: 'Today greeting card input ("Add a task..."), Top bar "New task" button, or Mobile bottom bar "+"',
         shortcut: 'N or Q',
-        actionLabel: 'New Task',
+        actionLabel: 'New task',
         onNavigate: () => onOpenNewTaskModal(),
       },
       {
         id: 'feat-task-drawer',
         phase: 'Phase 4.0',
         category: 'Planning & Tasks',
-        feature: 'Task Detail Drawer & "More options" Accordion (Repeat, Reminders, Subtasks, Goal, Google, Time Log)',
+        feature: 'Task detail drawer & "More options" accordion (Repeat, Reminders, Subtasks, Goal, Google, Time log)',
         whereItLivesNow: 'Click any task card title or "Edit" action in Today / All Tasks / Calendar',
-        actionLabel: 'View Tasks',
+        actionLabel: 'View tasks',
         onNavigate: () => setActiveNav('tasks'),
       },
       {
         id: 'feat-all-tasks',
         phase: 'Phase 3',
         category: 'Planning & Tasks',
-        feature: 'All Tasks (List & Kanban Board, Saved Views, Filters Popover, Bulk Select, Tag Manager)',
-        whereItLivesNow: 'Sidebar → Tasks (Saved Views dropdown, Filters popover, Bulk bar when tasks checked)',
-        actionLabel: 'Open All Tasks',
+        feature: 'All tasks (List & Kanban board, Saved views, Filters popover, Bulk select, Tag manager)',
+        whereItLivesNow: 'Sidebar → Tasks (Views bar, Filters popover, Bulk bar when tasks are checked)',
+        actionLabel: 'Open All tasks',
         onNavigate: () => setActiveNav('tasks'),
       },
       {
         id: 'feat-eisenhower',
         phase: 'Phase 3',
         category: 'Planning & Tasks',
-        feature: 'Eisenhower Matrix (4 Quadrants: Do First, Schedule, Quick Tasks, Eliminate)',
+        feature: 'Eisenhower Matrix (4 quadrants: Do first, Schedule, Quick tasks, Eliminate)',
         whereItLivesNow: 'Sidebar → More → Eisenhower Matrix (pin to main sidebar in Settings > Appearance)',
         actionLabel: 'Open Matrix',
         onNavigate: () => setActiveNav('matrix'),
@@ -120,7 +118,7 @@ export const WhereIsEverythingPage: React.FC<{
         phase: 'Phase 3',
         category: 'Planning & Tasks',
         feature: 'Smart Replan ("Replan my day" conflict & overdue solver with preview & Undo)',
-        whereItLivesNow: 'Today header → "More ⋯" menu → Replan my day (or Overbooked badge banner)',
+        whereItLivesNow: 'Today greeting card → "Actions" (...) menu → Replan my day (or click "Xh free" capacity indicator)',
         actionLabel: 'Open Smart Replan',
         onNavigate: () => setReplanModalOpen(true),
       },
@@ -128,8 +126,8 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-carry-forward',
         phase: 'Phase 1',
         category: 'Planning & Tasks',
-        feature: 'Yesterday Unfinished Tasks Carry-Forward',
-        whereItLivesNow: 'Today page → "Today’s extras" chip row → Unfinished chip popover',
+        feature: 'Yesterday unfinished tasks carry-forward',
+        whereItLivesNow: 'Today page → "Today’s extras" chip row → Unfinished from yesterday chip popover',
         actionLabel: 'Go to Today',
         onNavigate: () => setActiveNav('today'),
       },
@@ -139,7 +137,7 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-live-timer',
         phase: 'Phase 1',
         category: 'Time & Focus',
-        feature: 'Live Task Stopwatch & Pomodoro Timer (Slim Active Focus Bar)',
+        feature: 'Live task stopwatch & Pomodoro timer (slim Active Focus Bar)',
         whereItLivesNow: 'Hover any task card → Focus / Pomodoro button; slim bar appears at top while running',
         shortcut: 'P (Pause/Resume)',
         actionLabel: 'Go to Today',
@@ -149,18 +147,18 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-zen-mode',
         phase: 'Phase 3',
         category: 'Time & Focus',
-        feature: 'Distraction-Free Focus / Zen Mode (Full-screen timer + subtasks + scratchpad)',
+        feature: 'Distraction-free Focus / Zen mode (full-screen timer + subtasks + scratchpad)',
         whereItLivesNow: 'Slim Active Focus Bar → "Zen" button, or Command Palette / keyboard shortcut',
         shortcut: 'F',
-        actionLabel: 'Enter Zen Mode',
+        actionLabel: 'Enter Zen mode',
         onNavigate: () => setZenMode(true),
       },
       {
         id: 'feat-focus-targets',
-        phase: 'Phase 1',
+        phase: 'Phase 4.1',
         category: 'Time & Focus',
-        feature: 'Daily & Weekly Focus Target Progress Rings',
-        whereItLivesNow: 'Today page → "Today’s extras" chip row → Focus Target chip popover',
+        feature: 'Daily goal & Daily/Weekly focus target progress',
+        whereItLivesNow: 'Today page → "Today’s extras" chip row → "Daily goal" chip popover (holds both daily goal and focus targets)',
         actionLabel: 'Go to Today',
         onNavigate: () => setActiveNav('today'),
       },
@@ -170,7 +168,7 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-calendar-views',
         phase: 'Phase 2',
         category: 'Calendar & Sync',
-        feature: 'Calendar Page (Day, Week & Month views, drag-to-reschedule, resize duration)',
+        feature: 'Calendar page (Day, Week & Month views, drag-to-reschedule, resize duration)',
         whereItLivesNow: 'Sidebar → Calendar',
         shortcut: 'G then C',
         actionLabel: 'Open Calendar',
@@ -180,16 +178,16 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-recurring-tasks',
         phase: 'Phase 2',
         category: 'Calendar & Sync',
-        feature: 'Recurring Tasks Engine (Daily, Weekdays, Weekly, Every N days/weeks, per-occurrence overrides)',
-        whereItLivesNow: 'Task Detail Drawer → "More options" → Repeat section',
-        actionLabel: 'Create Recurring Task',
+        feature: 'Recurring tasks engine (Daily, Weekdays, Weekly, Every N days/weeks, per-occurrence overrides)',
+        whereItLivesNow: 'Task detail drawer → "More options" → Repeat section',
+        actionLabel: 'Create recurring task',
         onNavigate: () => onOpenNewTaskModal(),
       },
       {
         id: 'feat-google-calendar',
         phase: 'Phase 2',
         category: 'Calendar & Sync',
-        feature: 'Google Calendar Two-Way OAuth Sync & Setup Wizard',
+        feature: 'Google Calendar two-way OAuth sync & setup wizard',
         whereItLivesNow: 'Calendar toolbar → Google Calendar status chip (or Settings → Calendar & Integrations)',
         actionLabel: 'Open Calendar',
         onNavigate: () => setActiveNav('calendar'),
@@ -198,8 +196,8 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-ics-import-export',
         phase: 'Phase 2',
         category: 'Calendar & Sync',
-        feature: '.ICS Calendar Export, Import & Preview External Feed',
-        whereItLivesNow: 'Calendar toolbar → "Filters & .ICS" popover',
+        feature: '.ICS calendar export, import & preview external feed',
+        whereItLivesNow: 'Calendar toolbar → ".ICS / Export" popover',
         actionLabel: 'Open Calendar',
         onNavigate: () => setActiveNav('calendar'),
       },
@@ -209,7 +207,7 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-habits-tracker',
         phase: 'Phase 2',
         category: 'Habits, Goals & Rituals',
-        feature: 'Habits Page (7-day check-in grid, 90-day heatmap, streaks, numeric/timer habits) & Today Habits Chip',
+        feature: 'Habits page (7-day check-in grid, 90-day heatmap, streaks, numeric/timer habits) & Today Habits chip',
         whereItLivesNow: 'Sidebar → More → Habits (and Today page → "Habits X/Y" chip popover)',
         shortcut: 'G then H',
         actionLabel: 'Open Habits',
@@ -219,8 +217,8 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-goals-templates',
         phase: 'Phase 3',
         category: 'Habits, Goals & Rituals',
-        feature: 'Goals & Templates (Long-term goals linked to tasks/habits + Reusable Task & Day Templates)',
-        whereItLivesNow: 'Sidebar → More → Goals & Templates',
+        feature: 'Goals & Templates (long-term goals linked to tasks/habits + reusable Task & Day templates)',
+        whereItLivesNow: 'Sidebar → More → Goals & Templates (also linked from empty Today state)',
         actionLabel: 'Open Goals & Templates',
         onNavigate: () => setActiveNav('goals'),
       },
@@ -228,18 +226,18 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-daily-wrapup',
         phase: 'Phase 3',
         category: 'Habits, Goals & Rituals',
-        feature: 'Daily Wrap-Up Ritual (4-step Sunsama-style wizard: Summary, Reflection, Unfinished tasks, Tomorrow)',
-        whereItLivesNow: 'Today header → "More ⋯" menu → Wrap up day (or Command Palette)',
+        feature: 'Daily wrap-up ritual (4-step wizard: Summary, Reflection, Unfinished tasks, Tomorrow)',
+        whereItLivesNow: 'Today greeting card → "Actions" (...) menu → Wrap up day ritual (or Command Palette)',
         shortcut: 'W',
-        actionLabel: 'Start Wrap-Up',
+        actionLabel: 'Start wrap-up',
         onNavigate: () => setWrapUpModalOpen(true),
       },
       {
         id: 'feat-mood-goal-quote',
-        phase: 'Phase 3',
+        phase: 'Phase 4.1',
         category: 'Habits, Goals & Rituals',
-        feature: 'Daily Goal Highlight, Mood & Energy Check-In, and Daily Motivation Quote',
-        whereItLivesNow: 'Today page → "Today’s extras" chip row (Mood & Energy, Daily Goal, Motivation chips)',
+        feature: 'Mood & energy check-in, Daily goal + Focus target, and Daily motivation quote',
+        whereItLivesNow: 'Today page → "Today’s extras" chip row (Mood & energy, Daily goal, Motivation chips)',
         actionLabel: 'Go to Today',
         onNavigate: () => setActiveNav('today'),
       },
@@ -247,7 +245,7 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-achievements',
         phase: 'Phase 3',
         category: 'Habits, Goals & Rituals',
-        feature: 'Achievements & Milestones (Real-data-only badges & progress)',
+        feature: 'Achievements & milestones (real-data-only badges & progress)',
         whereItLivesNow: 'Sidebar → More → Achievements',
         actionLabel: 'Open Achievements',
         onNavigate: () => setActiveNav('achievements'),
@@ -256,10 +254,10 @@ export const WhereIsEverythingPage: React.FC<{
       // Notes & Reviews
       {
         id: 'feat-notes-pane',
-        phase: 'Phase 1',
+        phase: 'Phase 4.1',
         category: 'Notes & Reviews',
-        feature: 'Markdown Notes Workspace & Side-by-Side Note Pane (Daily Notes, Task Notes, Folders, Pinned)',
-        whereItLivesNow: 'Right side pane on wide screens, Top bar Notes icon drawer, or Sidebar → Notes',
+        feature: 'Markdown notes workspace & side-by-side note pane (Today | All notes switch, folders & task links)',
+        whereItLivesNow: 'Right side pane on wide screens ("Today | All notes (N)" switch), Top bar Notes icon drawer, or Sidebar → Notes',
         shortcut: ']',
         actionLabel: 'Open Notes',
         onNavigate: () => {
@@ -271,7 +269,7 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-reviews',
         phase: 'Phase 3',
         category: 'Notes & Reviews',
-        feature: 'Daily Reflection Journal & Weekly Review Generator (Markdown export & save to Notes)',
+        feature: 'Daily reflection journal & Weekly review generator (Markdown export & save to Notes)',
         whereItLivesNow: 'Sidebar → More → Reviews',
         actionLabel: 'Open Reviews',
         onNavigate: () => setActiveNav('reviews'),
@@ -282,7 +280,7 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-analytics-overview',
         phase: 'Phase 1',
         category: 'Analytics & Reports',
-        feature: 'Analytics Overview (4 Key KPIs, Productivity Score Trend, Planned vs Actual Hours, Scoring Formula)',
+        feature: 'Analytics overview (4 key KPIs, Productivity score trend, Planned vs actual hours, Scoring formula)',
         whereItLivesNow: 'Sidebar → Analytics → Overview tab',
         shortcut: 'G then A',
         actionLabel: 'Open Analytics',
@@ -292,16 +290,16 @@ export const WhereIsEverythingPage: React.FC<{
         id: 'feat-analytics-tabs',
         phase: 'Phase 3',
         category: 'Analytics & Reports',
-        feature: 'Analytics Deep-Dive Tabs (Time by Category/Quadrant/Hour, Tasks, Habits, 90-Day Consistency, Mood vs Score)',
+        feature: 'Analytics deep-dive tabs (Time by category/quadrant/hour, Tasks, Habits, 90-day consistency, Mood vs score)',
         whereItLivesNow: 'Sidebar → Analytics → Time / Tasks / Habits / Consistency / Mood tabs',
-        actionLabel: 'Explore Charts',
+        actionLabel: 'Explore charts',
         onNavigate: () => goToAnalytics('time'),
       },
       {
         id: 'feat-reports-csv',
         phase: 'Phase 3',
         category: 'Analytics & Reports',
-        feature: 'CSV Exports (Tasks, Time Logs, Habits, Daily Summary) & Printable Report View',
+        feature: 'CSV exports (Tasks, Time logs, Habits, Daily summary) & Printable report view',
         whereItLivesNow: 'Sidebar → More → Reports & CSV (also linked in Settings > Data & Backup)',
         actionLabel: 'Open Reports',
         onNavigate: () => setActiveNav('reports'),
@@ -309,56 +307,65 @@ export const WhereIsEverythingPage: React.FC<{
 
       // Settings & System
       {
+        id: 'feat-theme-sync-avatar',
+        phase: 'Phase 4.1',
+        category: 'Settings & System',
+        feature: 'Theme toggle (Light / Dark / System) & Local/Sync status indicator',
+        whereItLivesNow: 'Top bar right → Avatar menu (and Settings → Appearance / Account & Cloud Sync)',
+        actionLabel: 'Appearance settings',
+        onNavigate: () => goToSettings('appearance'),
+      },
+      {
         id: 'feat-appearance-density',
         phase: 'Phase 4.0',
         category: 'Settings & System',
-        feature: 'Appearance, Theme Presets, Density (Comfortable/Compact), Sidebar Pinned Items & Today’s Extras Toggle',
+        feature: 'Appearance, Theme presets, Density (Comfortable/Compact), Sidebar pinned items & Today’s extras toggle',
         whereItLivesNow: 'Sidebar bottom → Settings → Appearance accordion section',
-        actionLabel: 'Appearance Settings',
+        actionLabel: 'Appearance settings',
         onNavigate: () => goToSettings('appearance'),
       },
       {
         id: 'feat-notifications',
         phase: 'Phase 2',
         category: 'Settings & System',
-        feature: 'Notifications & Reminders (In-app bell center, Browser Push permission, Quiet Hours, Morning/Evening prompts)',
+        feature: 'Notifications & reminders (In-app bell center, Browser Push permission, Quiet hours, Morning/Evening prompts)',
         whereItLivesNow: 'Top bar Bell icon & Settings → Notifications & Background Push accordion section',
-        actionLabel: 'Notification Settings',
+        actionLabel: 'Notification settings',
         onNavigate: () => goToSettings('notifications'),
       },
       {
         id: 'feat-account-cloud-reserved',
         phase: 'Phase 4.0',
         category: 'Settings & System',
-        feature: 'Account & Cloud Sync Status (Local-only mode badge now; Firebase Auth & Cloud Sync in Phase 4A)',
-        whereItLivesNow: 'Top bar Sync chip / Account avatar & Settings → Account & Cloud Sync section',
-        actionLabel: 'Account Settings',
+        feature: 'Account & Cloud Sync status (Local mode in Avatar menu now; Firebase Auth & Cloud Sync in Phase 4A)',
+        whereItLivesNow: 'Top bar Avatar menu & Settings → Account & Cloud Sync section',
+        actionLabel: 'Account settings',
         onNavigate: () => goToSettings('account'),
       },
       {
         id: 'feat-ai-schedule',
         phase: 'Phase 1',
         category: 'Settings & System',
-        feature: 'AI Schedule Architect & Gemini Assistant Slot (Phase 4C)',
-        whereItLivesNow: 'Today header → "More ⋯" menu → AI Schedule Architect (and Settings → AI Assistant)',
-        actionLabel: 'Open AI Architect',
+        feature: 'AI Schedule Architect & Gemini Assistant slot (Phase 4C)',
+        whereItLivesNow: 'Today greeting card → "Actions" (...) menu → AI schedule architect (and Settings → AI Assistant)',
+        actionLabel: 'Open AI architect',
         onNavigate: () => onOpenAIScheduleModal(),
       },
       {
         id: 'feat-backup-json',
         phase: 'Phase 1',
         category: 'Settings & System',
-        feature: 'Full JSON Backup Export, Import Restore & Demo Data Reset/Clear',
-        whereItLivesNow: 'Settings → Data & Backup accordion section (and top bar Demo Data banner)',
-        actionLabel: 'Data & Backup',
+        feature: 'Full JSON backup export, import restore & demo data reset/clear',
+        whereItLivesNow: 'Settings → Data & Backup accordion section (and top bar sample data banner)',
+        actionLabel: 'Data & backup',
         onNavigate: () => goToSettings('data'),
       },
       {
         id: 'feat-command-palette',
         phase: 'Phase 3',
         category: 'Settings & System',
-        feature: 'Global Command Palette, Search & Keyboard Shortcuts Cheat Sheet',
-        whereItLivesNow: 'Top bar Search / Ctrl+K button, or press ? for keyboard shortcuts',
+        feature: 'Global Command Palette, Search & Keyboard shortcuts cheat sheet',
+        whereItLivesNow: 'Top bar Search icon button (Ctrl+K), or press ? for keyboard shortcuts',
         shortcut: 'Ctrl+K or ?',
         actionLabel: 'Open Command Palette',
         onNavigate: () => setCommandPaletteOpen(true),
@@ -409,15 +416,15 @@ export const WhereIsEverythingPage: React.FC<{
       {/* Header */}
       <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-1 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
-            <Compass className="w-4 h-4" />
-            Phase 4.0 Calm UI Directory
+          <div className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Compass className="w-4 h-4 text-slate-400" />
+            Feature directory
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Where is everything?
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Every feature from Phases 1–3 is preserved intact. Secondary controls now live in clean menus, tabs, and popovers so your daily workspace stays calm and focused. Search any tool below or jump straight to it in one click.
+            Every feature from Phases 1–3 is preserved intact and reachable within two clicks. Search any tool below or jump straight to it.
           </p>
         </div>
 
@@ -425,18 +432,18 @@ export const WhereIsEverythingPage: React.FC<{
           <button
             type="button"
             onClick={() => setShortcutsHelpOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
           >
-            <Keyboard className="w-3.5 h-3.5 text-blue-600" />
+            <Keyboard className="w-3.5 h-3.5 text-slate-400" />
             Shortcuts (?)
           </button>
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium cursor-pointer"
           >
-            <Search className="w-3.5 h-3.5" />
-            Command Palette (Ctrl+K)
+            <Search className="w-3.5 h-3.5 text-slate-400" />
+            Command palette (Ctrl+K)
           </button>
         </div>
       </div>
@@ -463,7 +470,7 @@ export const WhereIsEverythingPage: React.FC<{
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
               }`}
             >
@@ -477,13 +484,13 @@ export const WhereIsEverythingPage: React.FC<{
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
-              Complete Feature Map ({filteredEntries.length} of {featureEntries.length} features shown)
+            <CheckCircle2 className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+              Complete feature map ({filteredEntries.length} of {featureEntries.length} shown)
             </span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            100% of Phase 1–3 features verified &amp; reachable
+          <span className="text-xs text-slate-500">
+            All Phase 1–3 features verified &amp; reachable
           </span>
         </div>
 
@@ -495,20 +502,20 @@ export const WhereIsEverythingPage: React.FC<{
             >
               <div className="space-y-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                     {item.feature}
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                     {item.category}
                   </span>
                   {item.shortcut && (
-                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tabular-nums">
                       {item.shortcut}
-                    </kbd>
+                    </span>
                   )}
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">
                     Location:{' '}
                   </span>
                   {item.whereItLivesNow}
@@ -518,10 +525,10 @@ export const WhereIsEverythingPage: React.FC<{
               <button
                 type="button"
                 onClick={item.onNavigate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-blue-600 text-xs font-semibold transition-colors shrink-0 self-start sm:self-center cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors shrink-0 self-start sm:self-center cursor-pointer"
               >
                 {item.actionLabel}
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
               </button>
             </div>
           ))}
